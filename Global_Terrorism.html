@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html style="height: 100%;width:100%">
+
+<head>
+    <meta charset="utf-8">
+</head>
+
+<body style="height: 100%; width:100%">
+    <div id="chart-panel" style="height: 100%;width: 100%"></div>
+    <script type="text/javascript" src="https://fastly.jsdelivr.net/npm/echarts@4.8.0/dist/echarts.min.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/jquery/dist/jquery.min.js"></script>
+    <!-- <script type="text/javascript" src="http://zhangmuchen.top/file/dep/echarts/map/js/world.js"></script> -->
+
+    <script type="text/javascript">
+        var dom = document.getElementById("chart-panel");
+        var myChart = echarts.init(dom);
+        var option;
+        var app = {};
+        var attackType=['Assassination','Hijacking','3','4'];
+
+        function loadMap(mapName) {
+            var mapData;
+            if (mapName != "world") {
+                mapData = './map/' + mapName + '.json';
+            }
+            else {
+                mapData = './world.json';
+            }
+            $.getJSON(mapData, function (mapJson) {
+                echarts.registerMap(mapName, mapJson);
+
+                $.getJSON("./1970-1980country.json", function (data) {
+
+                    var mapOption = {
+                        baseOption: {
+                            animationDurationUpdate: 1000,
+                            animationEasingUpdate: 'quinticInOut',
+                            timeline: {
+                                axisType: 'category',
+                                orient: 'vertical',
+                                autoPlay: true,
+                                inverse: true,
+                                playInterval: 5000,
+                                left: null,
+                                right: 5,
+                                top: 20,
+                                bottom: 20,
+                                width: 46,
+                                height: null,
+                                label: {
+                                    normal: {
+                                        textStyle: {
+                                            color: '#ddd'
+                                        }
+                                    },
+                                    emphasis: {
+                                        textStyle: {
+                                            color: '#fff'
+                                        }
+                                    }
+                                },
+                                symbol: 'none',
+                                lineStyle: {
+                                    color: '#555'
+                                },
+                                checkpointStyle: {
+                                    color: '#bbb',
+                                    borderColor: '#777',
+                                    borderWidth: 1
+                                },
+                                controlStyle: {
+                                    showNextBtn: false,
+                                    showPrevBtn: false,
+                                    normal: {
+                                        color: '#666',
+                                        borderColor: '#666'
+                                    },
+                                    emphasis: {
+                                        color: '#aaa',
+                                        borderColor: '#aaa'
+                                    }
+                                },
+                                data: data.map(function (ele) {
+                                    return ele.time
+                                })
+                            },
+                            backgroundColor: '#7a7374',
+                            title: {
+                                text: '1980-2020年全球恐怖袭击发生次数分布',
+                                left: 'center',
+                                top: 'top',
+                                textStyle: {
+                                    fontSize: 25,
+                                    color: 'rgba(255,255,255, 0.9)'
+                                }
+                            },
+                            tooltip: {
+                                formatter: function (params) {
+                                    return params.name + ":" + params.value+'\n'+'Attack Type : '+attackType[params.value%attackType.length];
+                                }
+                            },
+                            grid: {
+                                left: '20%',
+                                right: '45%',
+                                top: '70%',
+                                bottom: 20
+                            },
+                            xAxis: {},
+                            yAxis: {},
+                            series: [{
+                                id: 'map',
+                                type: 'map',
+                                map: mapName,
+                                top: '10%',
+                                bottom: '35%',
+                                // left: 10,
+                                itemStyle: {
+                                    normal: {
+                                        areaColor: '#323c48',
+                                        borderColor: '#404a59'
+                                    },
+                                    emphasis: {
+                                        label: {
+                                            show: true
+                                        },
+                                        areaColor: 'rgba(255,255,255, 0.5)'
+                                    }
+                                },
+                                data: []
+                            }, {
+                                id: 'bar',
+                                type: 'bar',
+                                tooltip: {
+                                    show: true
+                                },
+                                label: {
+                                    normal: {
+                                        show: true,
+                                        position: 'right',
+                                        textStyle: {
+                                            color: '#ddd'
+                                        }
+                                    }
+                                },
+                                data: []
+                            }, {
+                                id: 'pie',
+                                type: 'pie',
+                                radius: ['8%', '20%'],
+                                center: ['75%', '85%'],
+                                roseType: 'radius',
+                                tooltip: {
+                                    formatter: '{b} {d}%'
+                                },
+                                data: [],
+                                label: {
+                                    normal: {
+                                        textStyle: {
+                                            color: '#ddd'
+                                        }
+                                    }
+                                },
+                                labelLine: {
+                                    normal: {
+                                        lineStyle: {
+                                            color: '#ddd'
+                                        }
+                                    }
+                                },
+                                itemStyle: {
+                                    normal: {
+                                        borderColor: 'rgba(0,0,0,0.3)',
+                                        borderSize: 1
+                                    }
+                                }
+                            }]
+                        },
+                        options: []
+                    }
+
+                    for (var i = 0; i < data.length; i++) {
+                        var dt = data[i].data;
+                        dt.sort(function (a, b) {
+                            return a.count - b.count;
+                        });
+
+                        dt = dt.map(function (item) {
+                            return { name: item['country'], value: item['count'] };
+                        });
+
+                        var restPercent = 1;
+                        var restValue = 0;
+                        data[i].data.slice(-10).forEach(function (ele) {
+                            restPercent = restPercent - ele.count / data[i].sum;
+                        });
+                        restValue = data[i].data.at(-1).count * (restPercent / (data[i].data.at(-1).count / data[i].sum));
+                        mapOption.options.push({
+                            visualMap: [{
+                                dimension: 0,
+                                left: '20%',
+                                top: '30%',
+                                bottom: '35%',
+                                itemWidth: 12,
+                                min: 1,
+                                max: data[i].max,
+                                text: ['High', 'Low'],
+                                textStyle: {
+                                    color: '#ddd'
+                                },
+                                inRange: {
+                                    color: ['lightskyblue', 'yellow', 'orangered', 'red']
+                                },
+                                calculable: true
+                            }],
+                            xAxis: {
+                                type: 'value',
+                                boundaryGap: [0, 0.1],
+                                axisLabel: {
+                                    show: true,
+                                }
+                            },
+                            yAxis: {
+                                type: 'category',
+                                axisLabel: {
+                                    show: true,
+                                    textStyle: {
+                                        show: true,
+                                        color: '#ddd'
+                                    }
+                                },
+                                data: data[i].data.map(function (ele) {
+                                    return ele.country;
+                                }).slice(-10)
+                            },
+                            series: [{
+                                id: 'map',
+                                data: data[i].data.map(function (item) {
+                                    return { name: item['country'], value: item['count'] };
+                                })
+                            }, {
+                                id: 'bar',
+                                data: data[i].data.map(function (ele) {
+                                    return ele.count
+                                }).sort(function (a, b) {
+                                    return a > b
+                                }).slice(-10)
+                            }
+                                ,
+                            {
+                                id: 'pie',
+                                data: data[i].data.slice(-10).map(function (item) {
+                                    return { name: item['country'], value: item['count'] };
+                                }).concat({
+                                    name: '其他国家',
+                                    value: restValue
+                                }),
+                            }
+                            ]
+                        })
+                    }
+                    myChart.setOption(mapOption);
+
+                })
+
+            }
+            )
+
+        }
+
+
+        function digInMap(mapName) {
+            var mapData = './map/' + mapName + '.json';
+            $.getJSON(mapData, function (mapJson) {
+                echarts.registerMap(mapName, mapJson);
+                console.log(mapJson);
+                var time = ['1980', '1990', '2000', '2010', '2020'];
+                $.getJSON("./Result.json", function (data) {
+                    var mapOption = {
+                        baseOption: {
+                            animationDurationUpdate: 1000,
+                            animationEasingUpdate: 'quinticInOut',
+                            timeline: {
+                                axisType: 'category',
+                                orient: 'vertical',
+                                autoPlay: true,
+                                inverse: true,
+                                playInterval: 5000,
+                                left: null,
+                                right: 5,
+                                top: 20,
+                                bottom: 20,
+                                width: 46,
+                                height: null,
+                                label: {
+                                    normal: {
+                                        textStyle: {
+                                            color: '#ddd'
+                                        }
+                                    },
+                                    emphasis: {
+                                        textStyle: {
+                                            color: '#fff'
+                                        }
+                                    }
+                                },
+                                symbol: 'none',
+                                lineStyle: {
+                                    color: '#555'
+                                },
+                                checkpointStyle: {
+                                    color: '#bbb',
+                                    borderColor: '#777',
+                                    borderWidth: 1
+                                },
+                                controlStyle: {
+                                    showNextBtn: false,
+                                    showPrevBtn: false,
+                                    normal: {
+                                        color: '#666',
+                                        borderColor: '#666'
+                                    },
+                                    emphasis: {
+                                        color: '#aaa',
+                                        borderColor: '#aaa'
+                                    }
+                                },
+                                data: time
+                            },
+                            backgroundColor: '#7a7374',
+                            title: {
+                                text: '1980-2020年全球恐怖袭击发生次数分布',
+                                left: 'center',
+                                top: 'top',
+                                textStyle: {
+                                    fontSize: 25,
+                                    color: 'rgba(255,255,255, 0.9)'
+                                }
+                            },
+                            tooltip: {
+                                formatter: function (params) {
+                                    return params.name + ":" + params.value;
+                                }
+                            },
+                            grid: {
+                                left: '20%',
+                                right: '45%',
+                                top: '70%',
+                                bottom: 20
+                            },
+                            xAxis: {},
+                            yAxis: {},
+                            series: [{
+                                id: 'map',
+                                type: 'map',
+                                top: '10%',
+                                bottom: '35%',
+                                // left: 10,
+                                roam: false,
+                                map: mapName,
+                                animationDurationUpdate: 1500,
+                                universalTransition: true,
+                                data: []
+                            }, {
+                                id: 'bar',
+                                type: 'bar',
+                                tooltip: {
+                                    show: true
+                                },
+                                label: {
+                                    normal: {
+                                        show: true,
+                                        position: 'right',
+                                        textStyle: {
+                                            color: '#ddd'
+                                        }
+                                    }
+                                },
+                                data: []
+                            }, {
+                                id: 'pie',
+                                type: 'pie',
+                                radius: ['8%', '20%'],
+                                center: ['75%', '85%'],
+                                roseType: 'radius',
+                                tooltip: {
+                                    formatter: '{b} {d}%'
+                                },
+                                data: [],
+                                label: {
+                                    normal: {
+                                        textStyle: {
+                                            color: '#ddd'
+                                        }
+                                    }
+                                },
+                                labelLine: {
+                                    normal: {
+                                        lineStyle: {
+                                            color: '#ddd'
+                                        }
+                                    }
+                                },
+                                itemStyle: {
+                                    normal: {
+                                        borderColor: 'rgba(0,0,0,0.3)',
+                                        borderSize: 1
+                                    }
+                                }
+                            }]
+                        },
+                        options: []
+                    }
+
+                    for (var i = 1980; i <= 2020; i += 10) {
+                        console.log(i);
+                        var dt = data.filter((dt) => { return dt['country'] == mapName && dt['iyear'] == i; });
+                        console.log(dt);
+                        if(dt.length==0)
+                            {
+                                mapOption.baseOption.timeline.data.splice((i-1980)/10,1);
+                                console.log(mapOption.baseOption.timeline.data);
+                                continue;
+                            }
+
+                        dt.sort(function (a, b) {
+                            return a.cnt - b.cnt;
+                        });
+                        let max = dt.at(-1)['cnt'];
+                        if(max == 1)max = 5;
+                        dt = dt.map(function (item) {
+                            return { name: item['province'], value: item['cnt'] };
+                        });
+                        
+
+                        mapOption.options.push({
+                            visualMap: [{
+                                dimension: 0,
+                                left: '20%',
+                                top: '30%',
+                                bottom: '35%',
+                                itemWidth: 12,
+                                min: 1,
+                                max: max,
+                                text: ['High', 'Low'],
+                                textStyle: {
+                                    color: '#ddd'
+                                },
+                                inRange: {
+                                    color: ['lightskyblue', 'yellow', 'orangered', 'red']
+                                },
+                                calculable: true
+                            }],
+                            xAxis: {
+                                type: 'value',
+                                boundaryGap: [0, 0.1],
+                                axisLabel: {
+                                    show: true,
+                                }
+                            },
+                            yAxis: {
+                                type: 'category',
+                                axisLabel: {
+                                    show: true,
+                                    textStyle: {
+                                        show: true,
+                                        color: '#ddd'
+                                    }
+                                },
+                                data: dt.map(function (ele) {
+                                    return ele.name;
+                                }).slice(-10)
+                            },
+                            series: [{
+                                id: 'map',
+                                data: dt,
+                                animationDurationUpdate: 1500,
+                                universalTransition: true,
+                            }, {
+                                id: 'bar',
+                                data: dt.map(function (ele) {
+                                    return ele.value;
+                                }).slice(-10)
+                            }
+
+                            ]
+                        })
+                        myChart.setOption(mapOption);
+
+                    }
+                })
+            })
+
+        }
+
+        loadMap('world');
+        //digInMap('China');
+
+        myChart.on('click', function (param) {
+            console.log(param.name);
+            //loadMap(param.name);
+            digInMap(param.name);
+        });
+        document.oncontextmenu = function () { loadMap('world'); return false; };
+        //document.getElementById('chart-panel').onmousewheel=function() {return false;};
+
+        if (option && typeof option === 'object') {
+            myChart.setOption(option);
+        }
+
+    </script>
+</body>
+
+</html>
